@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ShieldCheck, Lock, Fingerprint, CircleAlert } from "lucide-react";
+import { ShieldCheck, Lock, Fingerprint, CircleAlert, Globe2 } from "lucide-react";
 import { getSessionUser } from "@/lib/session";
 import { VeloxMark, RobloxIcon } from "@/components/icons";
 import { SITE } from "@/lib/constants";
@@ -17,6 +17,7 @@ const ERRORS: Record<string, string> = {
   server: "Something went wrong on our side. Please try again.",
   access_denied: "You declined the Roblox authorization.",
   oauth_not_configured: "Roblox OAuth is not configured yet — use the demo login instead.",
+  google_not_configured: "Google login is not configured yet.",
 };
 
 const ASSURANCES = [
@@ -75,8 +76,16 @@ export default async function LoginPage({
             )}
 
             <a
+              href={`/api/auth/google${target !== "/" ? `?next=${encodeURIComponent(target)}` : ""}`}
+              className="mt-7 flex items-center justify-center gap-2.5 rounded-2xl bg-white px-6 py-4 font-display text-base font-bold text-black transition-all hover:bg-zinc-200"
+            >
+              <Globe2 className="h-5 w-5" />
+              Continue with Google
+            </a>
+
+            <a
               href={authorizeUrl}
-              className="btn-glow mt-7 flex items-center justify-center gap-2.5 rounded-2xl bg-white px-6 py-4 font-display text-base font-bold text-black transition-all hover:bg-zinc-200"
+              className="mt-3 flex items-center justify-center gap-2.5 rounded-2xl border border-white/15 bg-white/5 px-6 py-4 font-display text-base font-bold text-white transition-all hover:bg-white/10"
             >
               <RobloxIcon className="h-5 w-5" />
               Login with Roblox
