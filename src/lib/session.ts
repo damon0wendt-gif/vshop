@@ -10,6 +10,7 @@ export type { SafeUser } from "./auth-types";
 
 const COOKIE_NAME = "velox_session";
 export const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
+const demoSessions = new Map<string, User>();
 
 function shouldUseSecureCookies(): boolean {
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? "";
@@ -46,11 +47,26 @@ export async function createSession(
   });
 }
 
+export async function createDemoSession(user: User): Promise<void> {
+  const token = generateToken();
+  demoSessions.set(token, user);
+  const store = await cookies();
+  store.set(COOKIE_NAME, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: shouldUseSecureCookies(),
+    path: "/",
+    expires: new Date(Date.now() + SESSION_TTL_MS),
+  });
+}
+
 export async function getSessionUser(): Promise<User | null> {
   try {
     const store = await cookies();
     const token = store.get(COOKIE_NAME)?.value;
     if (!token) return null;
+    const demoUser = demoSessions.get(token);
+    if (demoUser) return demoUser;
     const rows = await db
       .select()
       .from(sessions)
@@ -78,6 +94,7 @@ export async function destroySession(): Promise<void> {
   const store = await cookies();
   const token = store.get(COOKIE_NAME)?.value;
   if (token) {
+    demoSessions.delete(token);
     await db.delete(sessions).where(eq(sessions.tokenHash, hashToken(token)));
   }
   store.delete(COOKIE_NAME);

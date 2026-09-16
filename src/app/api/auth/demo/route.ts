@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "node:crypto";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { createSession, clientIp } from "@/lib/session";
+import { createDemoSession, createSession, clientIp } from "@/lib/session";
 import { robloxOAuthConfigured, adminRobloxIds, adminEmails } from "@/lib/roblox";
 import { rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
@@ -80,6 +81,20 @@ export async function POST(request: NextRequest) {
 
   const isAdmin =
     identity.isAdmin || adminRobloxIds().includes(identity.robloxId);
+
+  if (!process.env.DATABASE_URL) {
+    await createDemoSession({
+      id: crypto.randomUUID(),
+      robloxId: identity.robloxId,
+      username: identity.username,
+      displayName: identity.displayName,
+      email: identity.email,
+      avatarUrl: null,
+      isAdmin,
+      createdAt: new Date(),
+    });
+    return NextResponse.json({ ok: true });
+  }
 
   const existing = await db
     .select()
