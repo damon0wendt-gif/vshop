@@ -3,10 +3,6 @@ import { Pool } from "pg";
 
 const databaseUrl = process.env.DATABASE_URL;
 
-if (!databaseUrl) {
-  throw new Error("DATABASE_URL is required");
-}
-
 const globalForDb = globalThis as typeof globalThis & {
   __arenaNextJsPostgresqlPool?: Pool;
 };
@@ -14,7 +10,8 @@ const globalForDb = globalThis as typeof globalThis & {
 export const pool =
   globalForDb.__arenaNextJsPostgresqlPool ??
   new Pool({
-    connectionString: databaseUrl,
+    // Keep the public demo pages renderable before a real database is configured.
+    connectionString: databaseUrl ?? "postgresql://localhost:5432/vshop_demo",
   });
 
 if (process.env.NODE_ENV !== "production") {
