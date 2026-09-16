@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+
+# next.js build output
+.next/
+out/
+
+# production
+build/
+
+# environment & secrets — NEVER commit these
+.env
+.env.local
+.env*.local
+
+# logs
+*.log
+npm-debug.log*
+
+# misc
+.DS_Store
+.vercel
+*.tsbuildinfo
+next-env.d.ts
+/tmp/
+
+# downloadable source archive itself
+public/download/
