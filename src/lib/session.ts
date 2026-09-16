@@ -10,7 +10,8 @@ export type { SafeUser } from "./auth-types";
 
 const COOKIE_NAME = "velox_session";
 export const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
-const demoSessions = new Map<string, User>();
+const DEMO_SECRET =
+  process.env.SESSION_SECRET ?? "velox-local-demo-session-secret";
 
 function shouldUseSecureCookies(): boolean {
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? "";
@@ -48,10 +49,15 @@ export async function createSession(
 }
 
 export async function createDemoSession(user: User): Promise<void> {
-  const token = generateToken();
-  demoSessions.set(token, user);
+  const payload = Buffer.from(
+    JSON.stringify({ ...user, createdAt: user.createdAt.toISOString() }),
+  ).toString("base64url");
+  const signature = crypto
+    .createHmac("sha256", DEMO_SECRET)
+    .update(payload)
+    .digest("base64url");
   const store = await cookies();
-  store.set(COOKIE_NAME, token, {
+  store.set(COOKIE_NAME, `${payload}.${signature}`, {
     httpOnly: true,
     sameSite: "lax",
     secure: shouldUseSecureCookies(),
@@ -65,8 +71,22 @@ export async function getSessionUser(): Promise<User | null> {
     const store = await cookies();
     const token = store.get(COOKIE_NAME)?.value;
     if (!token) return null;
-    const demoUser = demoSessions.get(token);
-    if (demoUser) return demoUser;
+    const [payload, signature] = token.split(".");
+    if (payload && signature) {
+      const expected = crypto
+        .createHmac("sha256", DEMO_SECRET)
+        .update(payload)
+        .digest("base64url");
+      const valid =
+        signature.length === expected.length &&
+        crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+      if (valid) {
+        const user = JSON.parse(
+          Buffer.from(payload, "base64url").toString("utf8"),
+        ) as User & { createdAt: string };
+        return { ...user, createdAt: new Date(user.createdAt) };
+      }
+    }
     const rows = await db
       .select()
       .from(sessions)
@@ -94,7 +114,6 @@ export async function destroySession(): Promise<void> {
   const store = await cookies();
   const token = store.get(COOKIE_NAME)?.value;
   if (token) {
-    demoSessions.delete(token);
     await db.delete(sessions).where(eq(sessions.tokenHash, hashToken(token)));
   }
   store.delete(COOKIE_NAME);
